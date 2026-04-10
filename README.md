@@ -1,12 +1,7 @@
 
 ---
 title: "Multivariate Regression Framework for Estimating GFR in CKD Patients"
-author: "Chaudhary Tanuj"
-date: "`r Sys.Date()`"
-output:
-  github_document:
-    toc: true
-    toc_depth: 3
+
 ---
 
 # 🧬 CKD GFR Prediction using Multivariate Regression
@@ -381,12 +376,6 @@ Potential improvements include:
 - Real‑time predictive dashboards
 - Survival analysis for CKD outcomes
 
----
-
-# 👨‍💻 Author
-
-**Chaudhary Tanuj**  
-Biomedical Data Science Project
 
 ---
 
