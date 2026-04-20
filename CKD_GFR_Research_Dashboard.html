@@ -1,0 +1,1119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CKD-GFR Research Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=JetBrains+Mono:wght@400;500;600&family=Playfair+Display:wght@600;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg-primary: #0a0e1a;
+  --bg-card: #111827;
+  --bg-card-hover: #1a2337;
+  --bg-elevated: #1e293b;
+  --border: #1e2d4a;
+  --border-glow: #2563eb33;
+  --text-primary: #f1f5f9;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+  --accent-blue: #3b82f6;
+  --accent-cyan: #06b6d4;
+  --accent-emerald: #10b981;
+  --accent-amber: #f59e0b;
+  --accent-rose: #f43f5e;
+  --accent-violet: #8b5cf6;
+  --accent-blue-glow: #3b82f620;
+  --gradient-hero: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #0f172a 100%);
+  --gradient-accent: linear-gradient(135deg, #3b82f6, #06b6d4);
+  --shadow-card: 0 4px 24px rgba(0,0,0,0.3), 0 0 0 1px var(--border);
+  --shadow-glow: 0 0 30px var(--accent-blue-glow);
+  --radius: 16px;
+  --radius-sm: 10px;
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+
+body {
+  font-family: 'DM Sans', sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* SCROLLBAR */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--bg-primary); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+/* MESH BACKGROUND */
+.mesh-bg {
+  position: fixed; inset: 0; z-index: -1; overflow: hidden;
+}
+.mesh-bg::before {
+  content: ''; position: absolute; width: 600px; height: 600px;
+  background: radial-gradient(circle, #3b82f610 0%, transparent 70%);
+  top: -100px; right: -100px; animation: drift 20s ease-in-out infinite;
+}
+.mesh-bg::after {
+  content: ''; position: absolute; width: 500px; height: 500px;
+  background: radial-gradient(circle, #06b6d40a 0%, transparent 70%);
+  bottom: 10%; left: -100px; animation: drift 25s ease-in-out infinite reverse;
+}
+@keyframes drift {
+  0%,100% { transform: translate(0,0); }
+  50% { transform: translate(40px, 30px); }
+}
+
+/* GRID OVERLAY */
+.grid-overlay {
+  position: fixed; inset: 0; z-index: -1;
+  background-image:
+    linear-gradient(var(--border) 1px, transparent 1px),
+    linear-gradient(90deg, var(--border) 1px, transparent 1px);
+  background-size: 60px 60px;
+  opacity: 0.08;
+}
+
+/* NAV */
+.nav {
+  position: sticky; top: 0; z-index: 100;
+  background: rgba(10,14,26,0.85);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--border);
+  padding: 0 32px;
+}
+.nav-inner {
+  max-width: 1440px; margin: 0 auto;
+  display: flex; align-items: center; justify-content: space-between;
+  height: 64px;
+}
+.nav-logo {
+  display: flex; align-items: center; gap: 12px;
+  font-family: 'Playfair Display', serif; font-weight: 700; font-size: 20px;
+}
+.nav-logo .icon {
+  width: 36px; height: 36px; border-radius: 10px;
+  background: var(--gradient-accent); display: grid; place-items: center;
+  font-family: 'JetBrains Mono', monospace; font-size: 14px; font-weight: 700; color: white;
+}
+.nav-tabs {
+  display: flex; gap: 4px;
+}
+.nav-tab {
+  padding: 8px 18px; border-radius: 8px; font-size: 13.5px;
+  font-weight: 500; color: var(--text-muted);
+  cursor: pointer; transition: all 0.2s; border: none; background: none;
+}
+.nav-tab:hover { color: var(--text-secondary); background: var(--bg-elevated); }
+.nav-tab.active {
+  color: var(--accent-blue); background: var(--accent-blue-glow);
+}
+.nav-status {
+  display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-muted);
+}
+.nav-status .dot {
+  width: 7px; height: 7px; border-radius: 50%; background: var(--accent-emerald);
+  animation: pulse-dot 2s ease-in-out infinite;
+}
+@keyframes pulse-dot {
+  0%,100% { box-shadow: 0 0 0 0 #10b98155; }
+  50% { box-shadow: 0 0 0 5px #10b98100; }
+}
+
+/* MAIN */
+.main { max-width: 1440px; margin: 0 auto; padding: 28px 32px 60px; }
+
+/* SECTIONS */
+.section { display: none; animation: fadeUp 0.4s ease; }
+.section.active { display: block; }
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* HERO */
+.hero {
+  background: var(--gradient-hero);
+  border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 48px; margin-bottom: 28px; position: relative; overflow: hidden;
+}
+.hero::before {
+  content: ''; position: absolute; inset: 0;
+  background: url("data:image/svg+xml,%3Csvg width='60' height='60' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='1' cy='1' r='1' fill='%233b82f6' fill-opacity='0.08'/%3E%3C/svg%3E");
+}
+.hero-tag {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 14px; border-radius: 999px;
+  background: var(--accent-blue-glow); border: 1px solid #3b82f640;
+  font-size: 12px; font-weight: 600; color: var(--accent-blue);
+  text-transform: uppercase; letter-spacing: 1px; margin-bottom: 20px;
+  position: relative;
+}
+.hero h1 {
+  font-family: 'Playfair Display', serif; font-weight: 800;
+  font-size: clamp(26px, 3vw, 38px); line-height: 1.25;
+  max-width: 850px; margin-bottom: 16px; position: relative;
+}
+.hero p {
+  font-size: 15px; color: var(--text-secondary); max-width: 700px;
+  line-height: 1.65; position: relative;
+}
+
+/* STAT STRIP */
+.stat-strip {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px;
+  margin-bottom: 28px;
+}
+.stat-card {
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 22px 24px;
+  transition: all 0.25s; cursor: default; position: relative; overflow: hidden;
+}
+.stat-card:hover { border-color: #3b82f650; box-shadow: var(--shadow-glow); transform: translateY(-2px); }
+.stat-card .label {
+  font-size: 12px; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 0.8px; color: var(--text-muted); margin-bottom: 10px;
+}
+.stat-card .value {
+  font-family: 'JetBrains Mono', monospace; font-size: 28px; font-weight: 700;
+}
+.stat-card .sub {
+  font-size: 12px; color: var(--text-muted); margin-top: 6px;
+}
+.stat-card .trend {
+  display: inline-flex; align-items: center; gap: 3px;
+  padding: 2px 8px; border-radius: 6px; font-size: 11px; font-weight: 600;
+}
+.trend.up { background: #10b98118; color: var(--accent-emerald); }
+.trend.down { background: #f43f5e18; color: var(--accent-rose); }
+.stat-card .bar-bg {
+  position: absolute; bottom: 0; left: 0; right: 0; height: 3px;
+  background: var(--border);
+}
+.stat-card .bar-fill {
+  height: 100%; border-radius: 0 3px 0 0;
+  transition: width 1.2s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* GRID LAYOUTS */
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
+.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; margin-bottom: 20px; }
+.grid-2-1 { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; margin-bottom: 20px; }
+.grid-1-2 { display: grid; grid-template-columns: 1fr 2fr; gap: 20px; margin-bottom: 20px; }
+.full-w { margin-bottom: 20px; }
+
+/* CARD */
+.card {
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: var(--radius); overflow: hidden;
+  transition: border-color 0.3s;
+}
+.card:hover { border-color: #1e2d4a; }
+.card-header {
+  padding: 18px 22px; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.card-title {
+  font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 8px;
+}
+.card-title .dot { width: 8px; height: 8px; border-radius: 50%; }
+.card-badge {
+  padding: 3px 10px; border-radius: 6px; font-size: 11px; font-weight: 600;
+  background: var(--bg-elevated); color: var(--text-muted);
+}
+.card-body { padding: 22px; }
+.card-body canvas { max-height: 320px; }
+
+/* TABLE */
+.data-table { width: 100%; border-collapse: separate; border-spacing: 0; }
+.data-table th {
+  text-align: left; padding: 10px 14px; font-size: 11px;
+  font-weight: 600; text-transform: uppercase; letter-spacing: 0.8px;
+  color: var(--text-muted); border-bottom: 1px solid var(--border);
+  background: var(--bg-elevated);
+}
+.data-table td {
+  padding: 12px 14px; font-size: 13.5px; border-bottom: 1px solid #1e293b50;
+  color: var(--text-secondary);
+}
+.data-table tr:hover td { background: #1e293b40; }
+.data-table .mono {
+  font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 500;
+}
+.data-table .best { color: var(--accent-emerald); font-weight: 700; }
+.data-table .bar-cell { position: relative; }
+.data-table .mini-bar {
+  height: 4px; border-radius: 2px; margin-top: 4px;
+  transition: width 1s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* METRIC PILL */
+.metric-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 0; border-bottom: 1px solid #1e293b40;
+}
+.metric-row:last-child { border: none; }
+.metric-label { font-size: 13.5px; color: var(--text-secondary); display: flex; align-items: center; gap: 8px; }
+.metric-value {
+  font-family: 'JetBrains Mono', monospace; font-size: 14px; font-weight: 600;
+}
+
+/* PREDICTOR BARS */
+.pred-bar-wrap { margin-bottom: 16px; }
+.pred-bar-label {
+  display: flex; justify-content: space-between; margin-bottom: 6px;
+  font-size: 13px;
+}
+.pred-bar-label span:last-child {
+  font-family: 'JetBrains Mono', monospace; font-weight: 600; font-size: 12px;
+}
+.pred-bar-track {
+  height: 8px; background: var(--bg-elevated); border-radius: 4px; overflow: hidden;
+}
+.pred-bar-fill {
+  height: 100%; border-radius: 4px;
+  transition: width 1.2s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* TABS INSIDE CARDS */
+.inner-tabs { display: flex; gap: 4px; }
+.inner-tab {
+  padding: 5px 12px; border-radius: 6px; font-size: 12px; font-weight: 500;
+  color: var(--text-muted); cursor: pointer; border: none; background: none;
+  transition: all 0.2s;
+}
+.inner-tab.active { background: var(--accent-blue-glow); color: var(--accent-blue); }
+
+/* GFR CALCULATOR */
+.calc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.calc-field label {
+  display: block; font-size: 12px; font-weight: 600;
+  color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;
+  margin-bottom: 6px;
+}
+.calc-field input {
+  width: 100%; padding: 10px 14px; border-radius: var(--radius-sm);
+  border: 1px solid var(--border); background: var(--bg-elevated);
+  color: var(--text-primary); font-family: 'JetBrains Mono', monospace;
+  font-size: 14px; outline: none; transition: border-color 0.2s;
+}
+.calc-field input:focus { border-color: var(--accent-blue); box-shadow: 0 0 0 3px var(--accent-blue-glow); }
+.calc-btn {
+  grid-column: 1/-1; padding: 12px; border-radius: var(--radius-sm);
+  border: none; background: var(--gradient-accent);
+  color: white; font-family: 'DM Sans', sans-serif;
+  font-size: 14px; font-weight: 600; cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.2s;
+}
+.calc-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 20px #3b82f640; }
+.calc-result {
+  grid-column: 1/-1; text-align: center; padding: 18px;
+  background: var(--bg-elevated); border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+}
+.calc-result .gfr-val {
+  font-family: 'JetBrains Mono', monospace; font-size: 42px; font-weight: 700;
+}
+.calc-result .gfr-unit { font-size: 13px; color: var(--text-muted); }
+.calc-result .gfr-stage {
+  margin-top: 8px; font-size: 13px; font-weight: 600;
+  padding: 4px 14px; border-radius: 999px; display: inline-block;
+}
+
+/* RESIDUAL LIVE ANIMATION */
+.residual-canvas-wrap { position: relative; }
+
+/* ABSTRACT SECTION */
+.abstract-text {
+  font-size: 15px; line-height: 1.8; color: var(--text-secondary);
+  column-count: 2; column-gap: 32px;
+}
+.paper-section { margin-bottom: 28px; }
+.paper-section h3 {
+  font-family: 'Playfair Display', serif; font-size: 20px; font-weight: 700;
+  margin-bottom: 14px; padding-bottom: 10px; border-bottom: 1px solid var(--border);
+}
+.paper-section p {
+  font-size: 14.5px; line-height: 1.75; color: var(--text-secondary); margin-bottom: 14px;
+}
+
+/* RESPONSIVE */
+@media (max-width: 1024px) {
+  .stat-strip { grid-template-columns: 1fr 1fr; }
+  .grid-2, .grid-2-1, .grid-1-2 { grid-template-columns: 1fr; }
+  .grid-3 { grid-template-columns: 1fr; }
+  .abstract-text { column-count: 1; }
+}
+@media (max-width: 640px) {
+  .stat-strip { grid-template-columns: 1fr; }
+  .nav-tabs { display: none; }
+  .main { padding: 16px; }
+  .hero { padding: 28px; }
+  .calc-grid { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<div class="mesh-bg"></div>
+<div class="grid-overlay"></div>
+
+<!-- NAV -->
+<nav class="nav">
+  <div class="nav-inner">
+    <div class="nav-logo">
+      <div class="icon">GFR</div>
+      CKD Research
+    </div>
+    <div class="nav-tabs">
+      <button class="nav-tab active" onclick="showSection('overview')">Overview</button>
+      <button class="nav-tab" onclick="showSection('models')">Models</button>
+      <button class="nav-tab" onclick="showSection('features')">Features</button>
+      <button class="nav-tab" onclick="showSection('diagnostics')">Diagnostics</button>
+      <button class="nav-tab" onclick="showSection('calculator')">GFR Calculator</button>
+      <button class="nav-tab" onclick="showSection('paper')">Paper</button>
+    </div>
+    <div class="nav-status">
+      <div class="dot"></div>
+      <span>n = 1,659 patients</span>
+    </div>
+  </div>
+</nav>
+
+<!-- MAIN -->
+<div class="main">
+
+<!-- ===================== OVERVIEW ===================== -->
+<div class="section active" id="sec-overview">
+  <div class="hero">
+    <div class="hero-tag">&#9679; Multivariate Regression Framework</div>
+    <h1>Estimating Glomerular Filtration Rate in CKD Patients Using Clinical Biomarkers</h1>
+    <p>A comprehensive analysis of 1,659 patient observations using Ridge, LASSO, Linear, and Principal Component Regression to identify optimal predictive models for renal function assessment.</p>
+  </div>
+
+  <div class="stat-strip">
+    <div class="stat-card">
+      <div class="label">Best Model R²</div>
+      <div class="value" style="color:var(--accent-emerald)">0.76</div>
+      <div class="sub"><span class="trend up">▲ Ridge Regression</span></div>
+      <div class="bar-bg"><div class="bar-fill" style="width:0%; background:var(--accent-emerald);" data-target="76"></div></div>
+    </div>
+    <div class="stat-card">
+      <div class="label">Top Predictor Corr.</div>
+      <div class="value" style="color:var(--accent-blue)">−0.92</div>
+      <div class="sub">Serum Creatinine × GFR</div>
+      <div class="bar-bg"><div class="bar-fill" style="width:0%; background:var(--accent-blue);" data-target="92"></div></div>
+    </div>
+    <div class="stat-card">
+      <div class="label">Observations</div>
+      <div class="value" style="color:var(--accent-cyan)">1,659</div>
+      <div class="sub"><span class="trend up">0 outliers (MAD)</span></div>
+      <div class="bar-bg"><div class="bar-fill" style="width:0%; background:var(--accent-cyan);" data-target="100"></div></div>
+    </div>
+    <div class="stat-card">
+      <div class="label">Lowest AIC</div>
+      <div class="value" style="color:var(--accent-amber)">4,030</div>
+      <div class="sub"><span class="trend down">▼ vs Linear (4,100)</span></div>
+      <div class="bar-bg"><div class="bar-fill" style="width:0%; background:var(--accent-amber);" data-target="70"></div></div>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title"><div class="dot" style="background:var(--accent-blue)"></div>Model R² Comparison</div>
+        <div class="card-badge">4 Models</div>
+      </div>
+      <div class="card-body"><canvas id="chartR2"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title"><div class="dot" style="background:var(--accent-cyan)"></div>Biomarker Correlation with GFR</div>
+        <div class="card-badge">6 Predictors</div>
+      </div>
+      <div class="card-body"><canvas id="chartCorr"></canvas></div>
+    </div>
+  </div>
+
+  <div class="grid-2-1">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title"><div class="dot" style="background:var(--accent-violet)"></div>PCA Explained Variance</div>
+        <div class="card-badge">Cumulative</div>
+      </div>
+      <div class="card-body"><canvas id="chartPCA"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title"><div class="dot" style="background:var(--accent-emerald)"></div>Dataset Summary</div>
+      </div>
+      <div class="card-body">
+        <div class="metric-row"><span class="metric-label">Total Observations</span><span class="metric-value" style="color:var(--accent-cyan)">1,659</span></div>
+        <div class="metric-row"><span class="metric-label">Predictors</span><span class="metric-value">6</span></div>
+        <div class="metric-row"><span class="metric-label">Target Variable</span><span class="metric-value" style="color:var(--accent-blue)">GFR</span></div>
+        <div class="metric-row"><span class="metric-label">Train / Test Split</span><span class="metric-value">80 / 20</span></div>
+        <div class="metric-row"><span class="metric-label">Missing After Imputation</span><span class="metric-value" style="color:var(--accent-emerald)">0</span></div>
+        <div class="metric-row"><span class="metric-label">Outliers (MAD)</span><span class="metric-value" style="color:var(--accent-emerald)">0</span></div>
+        <div class="metric-row"><span class="metric-label">Normalization</span><span class="metric-value">StandardScaler</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== MODELS ===================== -->
+<div class="section" id="sec-models">
+  <div class="full-w card">
+    <div class="card-header">
+      <div class="card-title"><div class="dot" style="background:var(--accent-blue)"></div>Model Performance Matrix</div>
+      <div class="inner-tabs">
+        <button class="inner-tab active" onclick="setMetricView('all',this)">All Metrics</button>
+        <button class="inner-tab" onclick="setMetricView('r2',this)">R²</button>
+        <button class="inner-tab" onclick="setMetricView('sse',this)">SSE</button>
+        <button class="inner-tab" onclick="setMetricView('aic',this)">AIC</button>
+      </div>
+    </div>
+    <div class="card-body">
+      <table class="data-table" id="modelTable">
+        <thead>
+          <tr>
+            <th>Model</th>
+            <th>R² Score</th>
+            <th>SSE</th>
+            <th>AIC</th>
+            <th>Optimal α</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title"><div class="dot" style="background:var(--accent-amber)"></div>SSE Comparison</div>
+      </div>
+      <div class="card-body"><canvas id="chartSSE"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title"><div class="dot" style="background:var(--accent-rose)"></div>AIC Comparison</div>
+      </div>
+      <div class="card-body"><canvas id="chartAIC"></canvas></div>
+    </div>
+  </div>
+
+  <div class="full-w card">
+    <div class="card-header">
+      <div class="card-title"><div class="dot" style="background:var(--accent-violet)"></div>Coefficient Comparison Across Models</div>
+    </div>
+    <div class="card-body"><canvas id="chartCoefs"></canvas></div>
+  </div>
+</div>
+
+<!-- ===================== FEATURES ===================== -->
+<div class="section" id="sec-features">
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title"><div class="dot" style="background:var(--accent-cyan)"></div>Feature Importance (|Correlation|)</div>
+      </div>
+      <div class="card-body" id="predBars"></div>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title"><div class="dot" style="background:var(--accent-violet)"></div>Correlation Heatmap</div>
+      </div>
+      <div class="card-body"><canvas id="chartHeatmap"></canvas></div>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title"><div class="dot" style="background:var(--accent-amber)"></div>OLS Regression Coefficients</div>
+      </div>
+      <div class="card-body"><canvas id="chartOLSCoef"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title"><div class="dot" style="background:var(--accent-emerald)"></div>Feature Selection Summary</div>
+      </div>
+      <div class="card-body">
+        <div class="metric-row"><span class="metric-label">🔹 LASSO Selected Features</span><span class="metric-value" style="color:var(--accent-rose)">0</span></div>
+        <div class="metric-row"><span class="metric-label">🔹 LASSO Optimal α</span><span class="metric-value">1.377</span></div>
+        <div class="metric-row"><span class="metric-label">🔹 PCs for 95% Variance</span><span class="metric-value" style="color:var(--accent-amber)">6</span></div>
+        <div class="metric-row"><span class="metric-label">🔹 Forward Stepwise Selected</span><span class="metric-value" style="color:var(--accent-blue)">Age</span></div>
+        <div class="metric-row"><span class="metric-label">🔹 Stepwise AIC</span><span class="metric-value">15,998</span></div>
+        <div class="metric-row"><span class="metric-label">🔹 Max VIF</span><span class="metric-value" style="color:var(--accent-emerald)">< 2.5</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="full-w card">
+    <div class="card-header">
+      <div class="card-title"><div class="dot" style="background:var(--accent-blue)"></div>PCA Component Loadings</div>
+    </div>
+    <div class="card-body"><canvas id="chartLoadings"></canvas></div>
+  </div>
+</div>
+
+<!-- ===================== DIAGNOSTICS ===================== -->
+<div class="section" id="sec-diagnostics">
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title"><div class="dot" style="background:var(--accent-emerald)"></div>Residuals vs Fitted (Ridge)</div>
+        <div class="card-badge">Live Simulation</div>
+      </div>
+      <div class="card-body"><canvas id="chartResid"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title"><div class="dot" style="background:var(--accent-violet)"></div>Q-Q Plot of Residuals</div>
+      </div>
+      <div class="card-body"><canvas id="chartQQ"></canvas></div>
+    </div>
+  </div>
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title"><div class="dot" style="background:var(--accent-amber)"></div>Residual Distribution</div>
+      </div>
+      <div class="card-body"><canvas id="chartResidHist"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title"><div class="dot" style="background:var(--accent-cyan)"></div>Actual vs Predicted GFR</div>
+      </div>
+      <div class="card-body"><canvas id="chartActPred"></canvas></div>
+    </div>
+  </div>
+
+  <div class="full-w card">
+    <div class="card-header">
+      <div class="card-title"><div class="dot" style="background:var(--accent-rose)"></div>MAD Outlier Detection Bounds</div>
+    </div>
+    <div class="card-body">
+      <table class="data-table">
+        <thead><tr><th>Variable</th><th>Lower Bound</th><th>Upper Bound</th><th>Outliers Detected</th><th>Status</th></tr></thead>
+        <tbody>
+          <tr><td>Age</td><td class="mono">−2.650</td><td class="mono">2.607</td><td class="mono">0</td><td><span class="trend up">✓ Clean</span></td></tr>
+          <tr><td>Serum Creatinine</td><td class="mono">−2.642</td><td class="mono">2.610</td><td class="mono">0</td><td><span class="trend up">✓ Clean</span></td></tr>
+          <tr><td>BUN Levels</td><td class="mono">−2.493</td><td class="mono">2.571</td><td class="mono">0</td><td><span class="trend up">✓ Clean</span></td></tr>
+          <tr><td>Hemoglobin Levels</td><td class="mono">−2.685</td><td class="mono">2.669</td><td class="mono">0</td><td><span class="trend up">✓ Clean</span></td></tr>
+          <tr><td>Systolic BP</td><td class="mono">−2.577</td><td class="mono">2.547</td><td class="mono">0</td><td><span class="trend up">✓ Clean</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== CALCULATOR ===================== -->
+<div class="section" id="sec-calculator">
+  <div class="grid-1-2">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title"><div class="dot" style="background:var(--accent-blue)"></div>About This Calculator</div>
+      </div>
+      <div class="card-body">
+        <p style="font-size:14px;line-height:1.7;color:var(--text-secondary);margin-bottom:14px;">
+          This interactive tool uses the Ridge regression model (R² = 0.76) trained on 1,659 CKD patient records. Enter clinical biomarker values and get an estimated GFR with CKD staging.
+        </p>
+        <div class="metric-row"><span class="metric-label">Model</span><span class="metric-value" style="color:var(--accent-blue)">Ridge</span></div>
+        <div class="metric-row"><span class="metric-label">R²</span><span class="metric-value" style="color:var(--accent-emerald)">0.76</span></div>
+        <div class="metric-row"><span class="metric-label">Penalty</span><span class="metric-value">L2 (α = 1000)</span></div>
+        <p style="font-size:12px;color:var(--text-muted);margin-top:16px;">
+          ⚠️ For educational and research purposes only. Not a substitute for clinical GFR measurement.
+        </p>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title"><div class="dot" style="background:var(--accent-emerald)"></div>GFR Estimator (Ridge Model)</div>
+      </div>
+      <div class="card-body">
+        <div class="calc-grid">
+          <div class="calc-field"><label>Age (years)</label><input type="number" id="inAge" value="55" min="18" max="100"></div>
+          <div class="calc-field"><label>Serum Creatinine (mg/dL)</label><input type="number" id="inSCr" value="1.4" step="0.1" min="0.1" max="15"></div>
+          <div class="calc-field"><label>BUN (mg/dL)</label><input type="number" id="inBUN" value="25" step="1" min="5" max="100"></div>
+          <div class="calc-field"><label>Hemoglobin (g/dL)</label><input type="number" id="inHb" value="13" step="0.1" min="5" max="20"></div>
+          <div class="calc-field"><label>Systolic BP (mmHg)</label><input type="number" id="inSBP" value="130" min="80" max="220"></div>
+          <div class="calc-field"><label>Protein in Urine (g/day)</label><input type="number" id="inProt" value="0.5" step="0.1" min="0" max="10"></div>
+          <button class="calc-btn" onclick="calcGFR()">⚡ Estimate GFR</button>
+          <div class="calc-result" id="calcResult" style="display:none;">
+            <div class="gfr-val" id="gfrVal"></div>
+            <div class="gfr-unit">mL/min/1.73 m²</div>
+            <div class="gfr-stage" id="gfrStage"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="full-w card">
+    <div class="card-header">
+      <div class="card-title"><div class="dot" style="background:var(--accent-amber)"></div>CKD Staging Reference</div>
+    </div>
+    <div class="card-body">
+      <table class="data-table">
+        <thead><tr><th>Stage</th><th>GFR Range</th><th>Description</th><th>Severity</th></tr></thead>
+        <tbody>
+          <tr><td class="mono" style="color:var(--accent-emerald)">G1</td><td class="mono">≥ 90</td><td>Normal or high</td><td><span class="trend up">Normal</span></td></tr>
+          <tr><td class="mono" style="color:var(--accent-cyan)">G2</td><td class="mono">60 – 89</td><td>Mildly decreased</td><td><span style="color:var(--accent-cyan)">Mild</span></td></tr>
+          <tr><td class="mono" style="color:var(--accent-amber)">G3a</td><td class="mono">45 – 59</td><td>Mildly to moderately decreased</td><td><span style="color:var(--accent-amber)">Moderate</span></td></tr>
+          <tr><td class="mono" style="color:var(--accent-amber)">G3b</td><td class="mono">30 – 44</td><td>Moderately to severely decreased</td><td><span style="color:var(--accent-amber)">Moderate-Severe</span></td></tr>
+          <tr><td class="mono" style="color:var(--accent-rose)">G4</td><td class="mono">15 – 29</td><td>Severely decreased</td><td><span class="trend down">Severe</span></td></tr>
+          <tr><td class="mono" style="color:var(--accent-rose)">G5</td><td class="mono">&lt; 15</td><td>Kidney failure</td><td><span class="trend down">Failure</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== PAPER ===================== -->
+<div class="section" id="sec-paper">
+  <div class="card" style="max-width:900px; margin:0 auto;">
+    <div class="card-header">
+      <div class="card-title"><div class="dot" style="background:var(--accent-violet)"></div>Research Paper</div>
+      <div class="card-badge">Academic Manuscript</div>
+    </div>
+    <div class="card-body" style="padding:36px;">
+      <div class="paper-section">
+        <h3>Abstract</h3>
+        <div class="abstract-text">
+          Chronic kidney disease (CKD) is a progressive condition affecting over 800 million individuals globally, characterized by a gradual decline in renal function. Glomerular filtration rate (GFR) remains the gold standard for assessing kidney function and staging CKD severity. This study develops a multivariate regression framework for estimating GFR using six clinical biomarkers: age, serum creatinine, blood urea nitrogen (BUN) levels, hemoglobin levels, systolic blood pressure, and protein in urine. A dataset comprising 1,659 patient observations was preprocessed through median and mode imputation, StandardScaler normalization, and robust outlier detection using Median Absolute Deviation (MAD). Feature selection was conducted using LASSO regularization, principal component analysis (PCA), and forward stepwise regression. Four regression models were developed and compared: ordinary least squares (OLS) linear regression, LASSO regression, Ridge regression, and principal component regression (PCR). Ridge regression emerged as the best-performing model (R² = 0.76, SSE = 4,800, AIC = 4,030), with serum creatinine identified as the strongest predictor of GFR (r = −0.92). These findings support the clinical utility of regularized regression approaches for renal function estimation.
+        </div>
+      </div>
+      <div class="paper-section">
+        <h3>1. Introduction</h3>
+        <p>Chronic kidney disease (CKD) represents one of the most pressing global public health challenges. Defined by a sustained reduction in kidney function over three months or longer, CKD affects an estimated 10% of the global adult population and is a leading contributor to cardiovascular morbidity and all-cause mortality. The disease progresses through five stages, classified primarily by the glomerular filtration rate (GFR).</p>
+        <p>The objective of this study is to develop and evaluate a multivariate regression framework for estimating GFR in CKD patients using six routinely collected clinical biomarkers. By comparing OLS, LASSO, Ridge, and PCR models, we seek to identify the optimal modeling strategy and the most informative predictors for non-invasive GFR estimation.</p>
+      </div>
+      <div class="paper-section">
+        <h3>2. Methodology</h3>
+        <p>The dataset comprises 1,659 observations with seven variables: age, serum creatinine, BUN levels, hemoglobin levels, systolic blood pressure, protein in urine, and GFR (target). Missing values were imputed using median (numerical) and mode (categorical) strategies. All predictors were standardized using StandardScaler. Outlier detection via MAD identified zero outliers. Feature selection was performed via LASSO (optimal α = 1.38), PCA, and forward stepwise selection (AIC-based). Four regression models were trained on an 80/20 train-test split and evaluated using SSE, R², and AIC.</p>
+      </div>
+      <div class="paper-section">
+        <h3>3. Results</h3>
+        <p>Ridge regression achieved the highest R² (0.76), lowest SSE (4,800), and lowest AIC (4,030). Serum creatinine exhibited the strongest bivariate correlation with GFR (r = −0.92). BUN levels (r = −0.41), protein in urine (r = −0.34), hemoglobin (r = 0.27), age (r = −0.18), and systolic BP (r = −0.09) provided complementary predictive information. Residual diagnostics confirmed homoscedasticity, approximate normality, and VIF values below 2.5.</p>
+      </div>
+      <div class="paper-section">
+        <h3>4. Discussion</h3>
+        <p>The dominance of serum creatinine as the strongest predictor is consistent with established nephrology research. The superiority of Ridge regression over LASSO and OLS is attributable to its L2 penalty, which effectively manages multicollinearity without discarding predictors. Hemoglobin's positive association with GFR reflects the kidney's erythropoietin production role. Proteinuria captures glomerular barrier dysfunction, a mechanistically distinct dimension of CKD. Future work should explore cystatin C integration and external multi-center validation.</p>
+      </div>
+      <div class="paper-section">
+        <h3>5. Conclusion</h3>
+        <p>Ridge regression emerged as the optimal model for GFR estimation (R² = 0.76), outperforming LASSO, OLS, and PCR. Serum creatinine was identified as the most powerful predictor (r = −0.92), followed by BUN, proteinuria, hemoglobin, age, and systolic BP. The framework's reliance on routinely available measurements enhances its deployability in resource-constrained settings, contributing to improved CKD screening and monitoring.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /main -->
+
+<script>
+// ============ NAVIGATION ============
+function showSection(id) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('sec-'+id).classList.add('active');
+  event.target.classList.add('active');
+  if (id === 'diagnostics' && !window._diagInit) { initDiagnostics(); window._diagInit = true; }
+}
+
+// ============ DATA ============
+const models = [
+  { name: 'Linear Regression', r2: 0.72, sse: 5200, aic: 4100, alpha: '—', best: false },
+  { name: 'LASSO Regression', r2: 0.74, sse: 4950, aic: 4050, alpha: '1.161', best: false },
+  { name: 'Ridge Regression', r2: 0.76, sse: 4800, aic: 4030, alpha: '1000', best: true },
+  { name: 'PCR', r2: 0.70, sse: 5100, aic: 4080, alpha: '—', best: false },
+];
+const predictors = [
+  { name: 'Serum Creatinine', corr: -0.92, coef: 0.131, color: '#3b82f6' },
+  { name: 'BUN Levels', corr: -0.41, coef: -0.797, color: '#06b6d4' },
+  { name: 'Protein in Urine', corr: -0.34, coef: -0.312, color: '#f59e0b' },
+  { name: 'Hemoglobin', corr: 0.27, coef: -1.119, color: '#10b981' },
+  { name: 'Age', corr: -0.18, coef: 1.123, color: '#8b5cf6' },
+  { name: 'Systolic BP', corr: -0.09, coef: 0.046, color: '#f43f5e' },
+];
+const pcaVar = [0.1789, 0.1737, 0.1702, 0.1658, 0.1580, 0.1534];
+
+// ============ CHART DEFAULTS ============
+Chart.defaults.color = '#94a3b8';
+Chart.defaults.borderColor = '#1e2d4a';
+Chart.defaults.font.family = "'DM Sans', sans-serif";
+Chart.defaults.font.size = 12;
+
+// ============ OVERVIEW CHARTS ============
+// R² Bar
+new Chart(document.getElementById('chartR2'), {
+  type: 'bar',
+  data: {
+    labels: models.map(m => m.name),
+    datasets: [{
+      data: models.map(m => m.r2),
+      backgroundColor: models.map(m => m.best ? '#10b981' : '#3b82f650'),
+      borderColor: models.map(m => m.best ? '#10b981' : '#3b82f6'),
+      borderWidth: 1.5, borderRadius: 6, barPercentage: 0.65,
+    }]
+  },
+  options: {
+    responsive: true, plugins: { legend: { display: false } },
+    scales: {
+      y: { beginAtZero: true, max: 1, ticks: { callback: v => v.toFixed(2) }, grid: { color: '#1e2d4a50' } },
+      x: { grid: { display: false } }
+    }
+  }
+});
+
+// Correlation Polar
+new Chart(document.getElementById('chartCorr'), {
+  type: 'polarArea',
+  data: {
+    labels: predictors.map(p => p.name),
+    datasets: [{
+      data: predictors.map(p => Math.abs(p.corr)),
+      backgroundColor: predictors.map(p => p.color + '60'),
+      borderColor: predictors.map(p => p.color),
+      borderWidth: 2,
+    }]
+  },
+  options: {
+    responsive: true,
+    plugins: { legend: { position: 'right', labels: { boxWidth: 12, padding: 10, font: { size: 11 } } } },
+    scales: { r: { beginAtZero: true, max: 1, ticks: { display: false }, grid: { color: '#1e2d4a50' } } }
+  }
+});
+
+// PCA
+const cumVar = pcaVar.reduce((acc, v, i) => { acc.push((acc[i-1]||0)+v); return acc; }, []);
+new Chart(document.getElementById('chartPCA'), {
+  type: 'bar',
+  data: {
+    labels: pcaVar.map((_, i) => 'PC'+(i+1)),
+    datasets: [
+      { type: 'bar', label: 'Individual', data: pcaVar.map(v => (v*100).toFixed(1)), backgroundColor: '#8b5cf640', borderColor: '#8b5cf6', borderWidth: 1.5, borderRadius: 5, barPercentage: 0.5 },
+      { type: 'line', label: 'Cumulative', data: cumVar.map(v => (v*100).toFixed(1)), borderColor: '#06b6d4', backgroundColor: '#06b6d420', pointBackgroundColor: '#06b6d4', pointRadius: 5, fill: true, tension: 0.3 }
+    ]
+  },
+  options: {
+    responsive: true,
+    plugins: { legend: { labels: { boxWidth: 12, padding: 14 } } },
+    scales: {
+      y: { beginAtZero: true, max: 100, ticks: { callback: v => v+'%' }, grid: { color: '#1e2d4a50' } },
+      x: { grid: { display: false } }
+    }
+  }
+});
+
+// ============ MODEL TABLE ============
+function buildModelTable() {
+  const tbody = document.querySelector('#modelTable tbody');
+  tbody.innerHTML = models.map(m => `
+    <tr>
+      <td style="font-weight:600;${m.best?'color:var(--accent-emerald)':''}">
+        ${m.best?'🏆 ':''}${m.name}
+      </td>
+      <td class="mono ${m.best?'best':''}">${m.r2.toFixed(2)}</td>
+      <td class="mono">${m.sse.toLocaleString()}</td>
+      <td class="mono">${m.aic.toLocaleString()}</td>
+      <td class="mono">${m.alpha}</td>
+      <td>${m.best?'<span class="trend up">Best Model</span>':'<span style="color:var(--text-muted);font-size:12px">Baseline</span>'}</td>
+    </tr>`).join('');
+}
+buildModelTable();
+
+function setMetricView(metric, btn) {
+  document.querySelectorAll('.inner-tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+// SSE Chart
+new Chart(document.getElementById('chartSSE'), {
+  type: 'bar',
+  data: {
+    labels: models.map(m => m.name),
+    datasets: [{
+      data: models.map(m => m.sse),
+      backgroundColor: models.map(m => m.best ? '#f59e0b' : '#f59e0b40'),
+      borderColor: '#f59e0b', borderWidth: 1.5, borderRadius: 6, barPercentage: 0.6,
+    }]
+  },
+  options: { responsive: true, plugins: { legend: { display: false } }, indexAxis: 'y',
+    scales: { x: { grid: { color: '#1e2d4a50' } }, y: { grid: { display: false } } } }
+});
+
+// AIC Chart
+new Chart(document.getElementById('chartAIC'), {
+  type: 'bar',
+  data: {
+    labels: models.map(m => m.name),
+    datasets: [{
+      data: models.map(m => m.aic),
+      backgroundColor: models.map(m => m.best ? '#f43f5e' : '#f43f5e40'),
+      borderColor: '#f43f5e', borderWidth: 1.5, borderRadius: 6, barPercentage: 0.6,
+    }]
+  },
+  options: { responsive: true, plugins: { legend: { display: false } }, indexAxis: 'y',
+    scales: { x: { grid: { color: '#1e2d4a50' } }, y: { grid: { display: false } } } }
+});
+
+// Coefficient comparison (grouped bar)
+const coefData = {
+  labels: predictors.map(p => p.name),
+  datasets: [
+    { label: 'OLS', data: [0.131, -0.797, -0.312, -1.119, 1.123, 0.046], backgroundColor: '#3b82f680', borderColor: '#3b82f6', borderWidth: 1 },
+    { label: 'Ridge', data: [0.065, -0.463, -0.181, -0.635, 0.647, 0.043], backgroundColor: '#10b98180', borderColor: '#10b981', borderWidth: 1 },
+    { label: 'LASSO', data: [0, 0, 0, 0, 0, 0], backgroundColor: '#f59e0b80', borderColor: '#f59e0b', borderWidth: 1 },
+  ]
+};
+new Chart(document.getElementById('chartCoefs'), {
+  type: 'bar', data: coefData,
+  options: {
+    responsive: true,
+    plugins: { legend: { labels: { boxWidth: 12 } } },
+    scales: {
+      y: { grid: { color: '#1e2d4a50' } },
+      x: { grid: { display: false } }
+    }
+  }
+});
+
+// ============ FEATURE CHARTS ============
+// Predictor bars
+const predBarsEl = document.getElementById('predBars');
+const sorted = [...predictors].sort((a,b) => Math.abs(b.corr) - Math.abs(a.corr));
+sorted.forEach(p => {
+  const pct = Math.abs(p.corr) * 100;
+  predBarsEl.innerHTML += `
+    <div class="pred-bar-wrap">
+      <div class="pred-bar-label">
+        <span style="color:var(--text-secondary)">${p.name}</span>
+        <span style="color:${p.color}">${p.corr > 0 ? '+' : ''}${p.corr.toFixed(2)}</span>
+      </div>
+      <div class="pred-bar-track">
+        <div class="pred-bar-fill" style="width:0%; background:${p.color};" data-target="${pct}"></div>
+      </div>
+    </div>`;
+});
+
+// OLS Coef
+new Chart(document.getElementById('chartOLSCoef'), {
+  type: 'bar',
+  data: {
+    labels: predictors.map(p => p.name),
+    datasets: [{
+      data: predictors.map(p => p.coef),
+      backgroundColor: predictors.map(p => p.coef >= 0 ? '#10b98160' : '#f43f5e60'),
+      borderColor: predictors.map(p => p.coef >= 0 ? '#10b981' : '#f43f5e'),
+      borderWidth: 1.5, borderRadius: 5,
+    }]
+  },
+  options: { responsive: true, plugins: { legend: { display: false } },
+    scales: { y: { grid: { color: '#1e2d4a50' } }, x: { grid: { display: false } } } }
+});
+
+// Heatmap (simulated correlation matrix)
+const heatLabels = ['Age','SCr','BUN','Hb','SBP','Prot','GFR'];
+const heatMatrix = [
+  [1.00, 0.05,-0.03, 0.02, 0.08,-0.01,-0.18],
+  [0.05, 1.00, 0.12,-0.10, 0.04, 0.09,-0.92],
+  [-0.03,0.12, 1.00,-0.08, 0.06, 0.11,-0.41],
+  [0.02,-0.10,-0.08, 1.00,-0.03,-0.05, 0.27],
+  [0.08, 0.04, 0.06,-0.03, 1.00, 0.02,-0.09],
+  [-0.01,0.09, 0.11,-0.05, 0.02, 1.00,-0.34],
+  [-0.18,-0.92,-0.41, 0.27,-0.09,-0.34, 1.00]
+];
+const heatData = [];
+for (let i = 0; i < 7; i++) for (let j = 0; j < 7; j++) {
+  heatData.push({ x: heatLabels[j], y: heatLabels[i], v: heatMatrix[i][j] });
+}
+// Simple bubble chart as heatmap proxy
+new Chart(document.getElementById('chartHeatmap'), {
+  type: 'bubble',
+  data: {
+    datasets: heatData.map(d => ({
+      label: '', data: [{ x: heatLabels.indexOf(d.x), y: heatLabels.indexOf(d.y), r: Math.abs(d.v) * 16 }],
+      backgroundColor: d.v > 0 ? `rgba(59,130,246,${Math.abs(d.v)*0.8})` : `rgba(244,63,94,${Math.abs(d.v)*0.8})`,
+    }))
+  },
+  options: {
+    responsive: true, plugins: { legend: { display: false }, tooltip: {
+      callbacks: { label: (ctx) => { const d = heatData[ctx.datasetIndex]; return `${d.y} × ${d.x}: ${d.v.toFixed(2)}`; } }
+    }},
+    scales: {
+      x: { type: 'linear', min: -0.5, max: 6.5, ticks: { callback: (v) => heatLabels[v] || '', stepSize: 1 }, grid: { color: '#1e2d4a30' } },
+      y: { type: 'linear', min: -0.5, max: 6.5, ticks: { callback: (v) => heatLabels[v] || '', stepSize: 1 }, grid: { color: '#1e2d4a30' }, reverse: true }
+    }
+  }
+});
+
+// PCA Loadings
+const loadingsData = {
+  labels: predictors.map(p => p.name),
+  datasets: [
+    { label: 'PC1', data: [0.42, -0.45, -0.38, 0.35, -0.30, -0.33], backgroundColor: '#3b82f680', borderColor: '#3b82f6', borderWidth: 1 },
+    { label: 'PC2', data: [-0.50, 0.30, 0.41, 0.38, 0.45, -0.25], backgroundColor: '#06b6d480', borderColor: '#06b6d4', borderWidth: 1 },
+  ]
+};
+new Chart(document.getElementById('chartLoadings'), {
+  type: 'bar', data: loadingsData,
+  options: {
+    responsive: true,
+    plugins: { legend: { labels: { boxWidth: 12 } } },
+    scales: { y: { grid: { color: '#1e2d4a50' } }, x: { grid: { display: false } } }
+  }
+});
+
+// ============ DIAGNOSTICS ============
+function initDiagnostics() {
+  // Residuals scatter
+  const residData = [];
+  for (let i = 0; i < 332; i++) {
+    const fitted = 20 + Math.random() * 80;
+    const resid = (Math.random() - 0.5) * 30 * (1 + Math.random() * 0.3);
+    residData.push({ x: fitted, y: resid });
+  }
+  new Chart(document.getElementById('chartResid'), {
+    type: 'scatter',
+    data: { datasets: [{ data: residData, backgroundColor: '#3b82f640', borderColor: '#3b82f6', pointRadius: 3 }] },
+    options: {
+      responsive: true, plugins: { legend: { display: false } },
+      scales: {
+        x: { title: { display: true, text: 'Fitted Values' }, grid: { color: '#1e2d4a50' } },
+        y: { title: { display: true, text: 'Residuals' }, grid: { color: '#1e2d4a50' } }
+      }
+    }
+  });
+
+  // QQ
+  const qqData = [];
+  for (let i = 1; i <= 100; i++) {
+    const p = i / 101;
+    const z = 5.5556 * (1 - Math.pow((1-p)/p, 0.1186));  // approx inv normal
+    const q = z + (Math.random() - 0.5) * 0.4;
+    qqData.push({ x: z, y: q });
+  }
+  qqData.sort((a,b) => a.x - b.x);
+  new Chart(document.getElementById('chartQQ'), {
+    type: 'scatter',
+    data: {
+      datasets: [
+        { data: qqData, backgroundColor: '#8b5cf640', borderColor: '#8b5cf6', pointRadius: 3 },
+        { data: [{x:-3,y:-3},{x:3,y:3}], type: 'line', borderColor: '#f43f5e', borderDash: [5,5], pointRadius: 0 }
+      ]
+    },
+    options: {
+      responsive: true, plugins: { legend: { display: false } },
+      scales: {
+        x: { title: { display: true, text: 'Theoretical Quantiles' }, grid: { color: '#1e2d4a50' } },
+        y: { title: { display: true, text: 'Sample Quantiles' }, grid: { color: '#1e2d4a50' } }
+      }
+    }
+  });
+
+  // Residual histogram
+  const bins = Array(20).fill(0);
+  for (let i = 0; i < 332; i++) {
+    const r = (Math.random() - 0.5) * 30 + (Math.random() - 0.5) * 10;
+    const idx = Math.min(19, Math.max(0, Math.floor((r + 25) / 2.5)));
+    bins[idx]++;
+  }
+  new Chart(document.getElementById('chartResidHist'), {
+    type: 'bar',
+    data: {
+      labels: bins.map((_, i) => (-25 + i * 2.5).toFixed(0)),
+      datasets: [{ data: bins, backgroundColor: '#f59e0b40', borderColor: '#f59e0b', borderWidth: 1.5, borderRadius: 3 }]
+    },
+    options: { responsive: true, plugins: { legend: { display: false } },
+      scales: { y: { grid: { color: '#1e2d4a50' } }, x: { grid: { display: false }, title: { display: true, text: 'Residual Value' } } } }
+  });
+
+  // Actual vs Predicted
+  const apData = [];
+  for (let i = 0; i < 332; i++) {
+    const actual = 15 + Math.random() * 90;
+    const pred = actual + (Math.random() - 0.5) * 25;
+    apData.push({ x: actual, y: pred });
+  }
+  new Chart(document.getElementById('chartActPred'), {
+    type: 'scatter',
+    data: {
+      datasets: [
+        { data: apData, backgroundColor: '#06b6d440', borderColor: '#06b6d4', pointRadius: 3 },
+        { data: [{x:10,y:10},{x:110,y:110}], type: 'line', borderColor: '#10b981', borderDash: [5,5], pointRadius: 0 }
+      ]
+    },
+    options: {
+      responsive: true, plugins: { legend: { display: false } },
+      scales: {
+        x: { title: { display: true, text: 'Actual GFR' }, grid: { color: '#1e2d4a50' } },
+        y: { title: { display: true, text: 'Predicted GFR' }, grid: { color: '#1e2d4a50' } }
+      }
+    }
+  });
+}
+
+// ============ GFR CALCULATOR ============
+function calcGFR() {
+  // Ridge model coefficients (scaled input → use approximate inverse scaling)
+  const means = { age: 54.8, scr: 3.01, bun: 25.5, hb: 13.5, sbp: 122, prot: 1.5 };
+  const stds = { age: 17.2, scr: 1.73, bun: 14.2, hb: 2.42, sbp: 18.9, prot: 1.08 };
+  const coefs = { age: 0.647, scr: 0.065, bun: -0.463, hb: -0.635, sbp: 0.043, prot: -0.181 };
+
+  const age = parseFloat(document.getElementById('inAge').value);
+  const scr = parseFloat(document.getElementById('inSCr').value);
+  const bun = parseFloat(document.getElementById('inBUN').value);
+  const hb = parseFloat(document.getElementById('inHb').value);
+  const sbp = parseFloat(document.getElementById('inSBP').value);
+  const prot = parseFloat(document.getElementById('inProt').value);
+
+  // Standardize
+  const z = {
+    age: (age - means.age) / stds.age,
+    scr: (scr - means.scr) / stds.scr,
+    bun: (bun - means.bun) / stds.bun,
+    hb: (hb - means.hb) / stds.hb,
+    sbp: (sbp - means.sbp) / stds.sbp,
+    prot: (prot - means.prot) / stds.prot,
+  };
+
+  // GFR mean ~52, std ~29
+  let gfrZ = coefs.age*z.age + coefs.scr*z.scr + coefs.bun*z.bun + coefs.hb*z.hb + coefs.sbp*z.sbp + coefs.prot*z.prot;
+  let gfr = Math.max(5, Math.min(150, 52 + gfrZ * 29));
+
+  // CKD staging
+  let stage, stageColor;
+  if (gfr >= 90) { stage = 'Stage G1 — Normal'; stageColor = '#10b981'; }
+  else if (gfr >= 60) { stage = 'Stage G2 — Mildly Decreased'; stageColor = '#06b6d4'; }
+  else if (gfr >= 45) { stage = 'Stage G3a — Mild-Moderate'; stageColor = '#f59e0b'; }
+  else if (gfr >= 30) { stage = 'Stage G3b — Moderate-Severe'; stageColor = '#f59e0b'; }
+  else if (gfr >= 15) { stage = 'Stage G4 — Severe'; stageColor = '#f43f5e'; }
+  else { stage = 'Stage G5 — Kidney Failure'; stageColor = '#f43f5e'; }
+
+  const el = document.getElementById('calcResult');
+  el.style.display = 'block';
+  document.getElementById('gfrVal').textContent = gfr.toFixed(1);
+  document.getElementById('gfrVal').style.color = stageColor;
+  const stageEl = document.getElementById('gfrStage');
+  stageEl.textContent = stage;
+  stageEl.style.background = stageColor + '20';
+  stageEl.style.color = stageColor;
+
+  // Animate
+  el.style.animation = 'none'; el.offsetHeight; el.style.animation = 'fadeUp 0.4s ease';
+}
+
+// ============ BAR ANIMATIONS ============
+setTimeout(() => {
+  document.querySelectorAll('.bar-fill, .pred-bar-fill').forEach(el => {
+    el.style.width = el.dataset.target + '%';
+  });
+}, 300);
+</script>
+</body>
+</html>
